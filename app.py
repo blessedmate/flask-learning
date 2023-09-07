@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, Integer, String, Float
+from flask_marshmallow import Marshmallow
 import os
 
 
@@ -12,6 +13,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(
 )
 
 db = SQLAlchemy(app)
+ma = Marshmallow(app)
 
 
 # DB Models
@@ -35,7 +37,7 @@ class Planet(db.Model):
     distance = Column(Float)
 
 
-# DB Scripts
+# DB Scripts - run in terminal using flask script_name
 @app.cli.command("db_create")
 def db_create():
     db.create_all()
@@ -93,6 +95,32 @@ def db_seed():
     print("Database seeded!")
 
 
+class UserSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "first_name", "last_name", "email", "password")
+
+
+class PlanetSchema(ma.Schema):
+    class Meta:
+        fields = (
+            "planet_id",
+            "planet_name",
+            "planet_type",
+            "home_star",
+            "mass",
+            "radius",
+            "distance",
+        )
+
+
+user_schema = UserSchema()
+users_schema = UserSchema(many=True)
+
+
+planet_schema = PlanetSchema()
+planets_schema = PlanetSchema(many=True)
+
+
 # EndPoints
 @app.route("/")
 def hello_world():
@@ -130,7 +158,8 @@ def url_variables(name: str, age: int):
 @app.route("/planets", methods=["GET"])
 def get_planets():
     planets_list = Planet.query.all()
-    return jsonify(data=planets_list)
+    result = planets_schema.dump(planets_list)
+    return jsonify(result)
 
 
 if __name__ == "__main__":
